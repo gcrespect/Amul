@@ -18,8 +18,7 @@ jobs:
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          python3 - <<'EOF'
-          import json
+          cat > check_stock.py << 'PYEOF'
           import os
           import requests
           from playwright.sync_api import sync_playwright
@@ -35,13 +34,35 @@ jobs:
                   user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
               )
               page = context.new_page()
-
-              # Set pincode first
               page.goto("https://shop.amul.com/en/browse/protein", wait_until="networkidle", timeout=30000)
               try:
                   page.click("text=Select Pincodes", timeout=5000)
-              except:
-                  print("Pincode button not found, continuing anyway")
-              try:
                   page.fill("input[type='text']", PINCODE, timeout=5000)
                   page.keyboard.press("Enter")
+                  page.wait_for_timeout(3000)
+              except Exception as e:
+                  print(f"Pincode input error: {e}")
+              page.goto(PRODUCT_URL, wait_until="networkidle", timeout=30000)
+              html = page.content()
+              browser.close()
+
+          is_sold_out = "Sold Out" in html or "Notify Me" in html
+          print(f"Is sold out: {is_sold_out}")
+
+          if not is_sold_out:
+              message = {
+                  "content": (
+                      "🟢 **IN STOCK NOW!**\n"
+                      f"**{PRODUCT_NAME}** is available on Amul Shop!\n"
+                      f"👉 Buy here: {PRODUCT_URL}"
+                  )
+              }
+              response = requests.post(webhook, json=message)
+              if response.status_code == 204:
+                  print("✅ IN STOCK! Discord notification sent.")
+              else:
+                  print(f"❌ Discord error: {response.status_code} {response.text}")
+          else:
+              print("❌ Still sold out. No notification sent.")
+          PYEOF
+          python3 check_stock.py
