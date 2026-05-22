@@ -2,7 +2,7 @@ name: Amul Lassi Stock Checker
 
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '0 * * * *'   # Every 1 hour (saves your free API quota)
   workflow_dispatch:
 
 jobs:
@@ -12,37 +12,26 @@ jobs:
       - name: Check stock and notify via Discord
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          SCRAPER_API_KEY: ${{ secrets.SCRAPER_API_KEY }}
         run: |
           python3 - <<'EOF'
           import urllib.request
           import json
           import os
-          import gzip
 
           PRODUCT_URL = "https://shop.amul.com/en/product/amul-high-protein-plain-lassi-200-ml-or-pack-of-30"
           PRODUCT_NAME = "Amul High Protein Plain Lassi (200 mL | Pack of 30)"
           webhook = os.environ["DISCORD_WEBHOOK_URL"]
+          scraper_key = os.environ["SCRAPER_API_KEY"]
 
-          headers = {
-              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-              "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-              "Accept-Language": "en-US,en;q=0.9",
-              "Accept-Encoding": "gzip, deflate",
-              "Connection": "keep-alive",
-              "Upgrade-Insecure-Requests": "1",
-              "Cache-Control": "max-age=0",
-              "Referer": "https://shop.amul.com/en/browse/protein"
-          }
+          # Route through ScraperAPI to bypass bot detection
+          proxy_url = f"http://scraperapi:{scraper_key}@proxy-server.scraperapi.com:8001"
+          proxy_handler = urllib.request.ProxyHandler({"http": proxy_url, "https": proxy_url})
+          opener = urllib.request.build_opener(proxy_handler)
 
-          req = urllib.request.Request(PRODUCT_URL, headers=headers)
-          response = urllib.request.urlopen(req)
-          raw = response.read()
-
-          # Handle gzip compressed response
-          if response.info().get("Content-Encoding") == "gzip":
-              html = gzip.decompress(raw).decode("utf-8", errors="ignore")
-          else:
-              html = raw.decode("utf-8", errors="ignore")
+          req = urllib.request.Request(PRODUCT_URL)
+          response = opener.open(req)
+          html = response.read().decode("utf-8", errors="ignore")
 
           is_sold_out = "Sold Out" in html or "Notify Me" in html
 
