@@ -1,0 +1,2 @@
+# Amul
+Stock Checker
