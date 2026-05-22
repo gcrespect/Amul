@@ -9,9 +9,9 @@ jobs:
   check-stock:
     runs-on: ubuntu-latest
     steps:
-      - name: Install Playwright
+      - name: Install dependencies
         run: |
-          pip install playwright --break-system-packages
+          pip install playwright requests --break-system-packages
           playwright install chromium --with-deps
 
       - name: Check stock and notify via Discord
@@ -21,7 +21,7 @@ jobs:
           python3 - <<'EOF'
           import json
           import os
-          import urllib.request
+          import requests
           from playwright.sync_api import sync_playwright
 
           PRODUCT_URL = "https://shop.amul.com/en/product/amul-high-protein-plain-lassi-200-ml-or-pack-of-30"
@@ -36,49 +36,12 @@ jobs:
               )
               page = context.new_page()
 
-              # First go to homepage and set pincode
+              # Set pincode first
               page.goto("https://shop.amul.com/en/browse/protein", wait_until="networkidle", timeout=30000)
-
-              # Click the pincode selector and enter pincode
               try:
                   page.click("text=Select Pincodes", timeout=5000)
               except:
-                  try:
-                      page.click("[placeholder*='pincode' i]", timeout=5000)
-                  except:
-                      print("Pincode button not found by text, trying input directly")
-
-              # Type pincode into input field
+                  print("Pincode button not found, continuing anyway")
               try:
                   page.fill("input[type='text']", PINCODE, timeout=5000)
                   page.keyboard.press("Enter")
-                  page.wait_for_timeout(3000)
-              except Exception as e:
-                  print(f"Pincode input error: {e}")
-
-              # Now go to product page
-              page.goto(PRODUCT_URL, wait_until="networkidle", timeout=30000)
-              html = page.content()
-              browser.close()
-
-          is_sold_out = "Sold Out" in html or "Notify Me" in html
-          print(f"Is sold out: {is_sold_out}")
-
-          if not is_sold_out:
-              message = {
-                  "content": (
-                      "🟢 **IN STOCK NOW!**\n"
-                      f"**{PRODUCT_NAME}** is available on Amul Shop!\n"
-                      f"👉 Buy here: {PRODUCT_URL}"
-                  )
-              }
-              data = json.dumps(message).encode("utf-8")
-              req = urllib.request.Request(
-                  webhook, data=data,
-                  headers={"Content-Type": "application/json"}
-              )
-              urllib.request.urlopen(req)
-              print("✅ IN STOCK! Discord notification sent.")
-          else:
-              print("❌ Still sold out. No notification sent.")
-          EOF
