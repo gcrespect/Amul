@@ -34,14 +34,28 @@ jobs:
                   user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
               )
               page = context.new_page()
+
+              # Go to protein page first
               page.goto("https://shop.amul.com/en/browse/protein", wait_until="networkidle", timeout=30000)
+
+              # Click the pincode area to open the input
               try:
-                  page.click("text=Select Pincodes", timeout=5000)
-                  page.fill("input[type='text']", PINCODE, timeout=5000)
+                  page.click(".pincode_wrap", timeout=5000)
+                  page.wait_for_timeout(1000)
+              except Exception as e:
+                  print(f"Pincode wrap click error: {e}")
+
+              # Fill the pincode input using its placeholder
+              try:
+                  page.fill("input[placeholder='Enter Your Pincode']", PINCODE, timeout=5000)
+                  page.wait_for_timeout(1000)
                   page.keyboard.press("Enter")
                   page.wait_for_timeout(3000)
+                  print(f"✅ Pincode {PINCODE} entered successfully")
               except Exception as e:
-                  print(f"Pincode input error: {e}")
+                  print(f"❌ Pincode input error: {e}")
+
+              # Now go to product page
               page.goto(PRODUCT_URL, wait_until="networkidle", timeout=30000)
               html = page.content()
               browser.close()
