@@ -41,16 +41,21 @@ jobs:
           is_sold_out = "Sold Out" in html or "Notify Me" in html
           print(f"Is sold out: {is_sold_out}")
 
-          # TEMPORARY: always send a test message to verify Discord works
-          message = {"content": f"🧪 **Test message!** Stock checker is running.\nItem is currently: {'❌ Sold Out' if is_sold_out else '✅ IN STOCK'}"}
-          data = json.dumps(message).encode("utf-8")
-          try:
+          if not is_sold_out:
+              message = {
+                  "content": (
+                      "🟢 **IN STOCK NOW!**\n"
+                      f"**{PRODUCT_NAME}** is available on Amul Shop!\n"
+                      f"👉 Buy here: {PRODUCT_URL}"
+                  )
+              }
+              data = json.dumps(message).encode("utf-8")
               req = urllib.request.Request(
                   webhook, data=data,
                   headers={"Content-Type": "application/json"}
               )
               urllib.request.urlopen(req)
-              print("✅ Discord test message sent!")
-          except Exception as e:
-              print(f"❌ Discord error: {e}")
+              print("✅ IN STOCK! Discord notification sent.")
+          else:
+              print("❌ Still sold out. No notification sent.")
           EOF
