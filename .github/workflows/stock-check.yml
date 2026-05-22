@@ -44,22 +44,13 @@ jobs:
                   for char in PINCODE:
                       page.keyboard.type(char)
                       page.wait_for_timeout(200)
-                  print(f"Typed pincode: {PINCODE}")
                   page.wait_for_timeout(2000)
-
-                  # Click dropdown and wait for full page reload
                   page.click("a.searchitem-name", timeout=5000)
-                  print("Clicked dropdown")
-
-                  # Wait for page to fully reload with pincode applied
                   page.wait_for_load_state("networkidle", timeout=15000)
                   page.wait_for_timeout(3000)
-                  print("Page reloaded after pincode")
-
               except Exception as e:
                   print(f"Pincode error: {e}")
 
-              # Read HTML after page has fully settled
               html = page.content()
               browser.close()
 
