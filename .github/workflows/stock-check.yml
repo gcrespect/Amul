@@ -35,22 +35,28 @@ jobs:
               page = context.new_page()
 
               page.goto(PRODUCT_URL, wait_until="networkidle", timeout=30000)
-              page.screenshot(path="1_before_pincode.png", full_page=True)
 
+              # Print ALL inputs found on the page
+              inputs = page.query_selector_all("input")
+              print(f"Found {len(inputs)} inputs on product page")
+              for i, inp in enumerate(inputs):
+                  print(f"Input {i}: placeholder='{inp.get_attribute('placeholder')}' id='{inp.get_attribute('id')}' class='{inp.get_attribute('class')}'")
+
+              # Try clicking any input that exists
               try:
-                  pincode_input = page.locator("input[placeholder='ENTER YOUR PINCODE']")
-                  pincode_input.click()
-                  for char in PINCODE:
-                      page.keyboard.type(char)
-                      page.wait_for_timeout(200)
-                  page.wait_for_timeout(2000)
-                  page.screenshot(path="2_after_typing.png", full_page=True)
-                  page.click("a.searchitem-name", timeout=5000)
-                  print("Clicked dropdown suggestion")
-                  page.wait_for_timeout(4000)
-                  page.screenshot(path="3_after_pincode_set.png", full_page=True)
+                  if len(inputs) > 0:
+                      inputs[0].click()
+                      for char in PINCODE:
+                          page.keyboard.type(char)
+                          page.wait_for_timeout(200)
+                      print(f"Typed pincode into first input")
+                      page.wait_for_timeout(2000)
+                      page.screenshot(path="2_after_typing.png", full_page=True)
+                      page.click("a.searchitem-name", timeout=5000)
+                      page.wait_for_timeout(4000)
+                      page.screenshot(path="3_after_pincode_set.png", full_page=True)
               except Exception as e:
-                  print(f"Pincode error: {e}")
+                  print(f"Error: {e}")
 
               html = page.content()
               browser.close()
