@@ -24,7 +24,6 @@ jobs:
           from playwright.sync_api import sync_playwright
 
           PRODUCT_URL = "https://shop.amul.com/en/product/amul-high-protein-plain-lassi-200-ml-or-pack-of-30"
-          PRODUCT_NAME = "Amul High Protein Plain Lassi (200 mL | Pack of 30)"
           PINCODE = "201310"
           webhook = os.environ.get("DISCORD_WEBHOOK_URL", "")
 
@@ -35,45 +34,35 @@ jobs:
               )
               page = context.new_page()
 
-              # Go directly to product page
               page.goto(PRODUCT_URL, wait_until="networkidle", timeout=30000)
+              page.screenshot(path="1_before_pincode.png", full_page=True)
 
-              # Set pincode on the modal that appears on product page
               try:
                   pincode_input = page.locator("input[placeholder='ENTER YOUR PINCODE']")
                   pincode_input.click()
                   for char in PINCODE:
                       page.keyboard.type(char)
                       page.wait_for_timeout(200)
-                  print(f"Typed pincode: {PINCODE}")
                   page.wait_for_timeout(2000)
+                  page.screenshot(path="2_after_typing.png", full_page=True)
                   page.click("a.searchitem-name", timeout=5000)
                   print("Clicked dropdown suggestion")
-                  page.wait_for_timeout(3000)
+                  page.wait_for_timeout(4000)
+                  page.screenshot(path="3_after_pincode_set.png", full_page=True)
               except Exception as e:
                   print(f"Pincode error: {e}")
 
-              # Now read the page content
               html = page.content()
               browser.close()
 
           is_sold_out = "Sold Out" in html or "Notify Me" in html
           print(f"Is sold out: {is_sold_out}")
-
-          if not is_sold_out:
-              message = {
-                  "content": (
-                      "🟢 **IN STOCK NOW!**\n"
-                      f"**{PRODUCT_NAME}** is available on Amul Shop!\n"
-                      f"👉 Buy here: {PRODUCT_URL}"
-                  )
-              }
-              response = requests.post(webhook, json=message)
-              if response.status_code == 204:
-                  print("✅ IN STOCK! Discord notification sent.")
-              else:
-                  print(f"❌ Discord error: {response.status_code} {response.text}")
-          else:
-              print("❌ Still sold out. No notification sent.")
           PYEOF
           python3 check_stock.py
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: "*.png"
