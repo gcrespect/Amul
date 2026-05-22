@@ -2,43 +2,45 @@ name: Amul Lassi Stock Checker
 
 on:
   schedule:
-    - cron: '0 * * * *'
+    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 jobs:
   check-stock:
     runs-on: ubuntu-latest
     steps:
+      - name: Install Playwright
+        run: |
+          pip install playwright --break-system-packages
+          playwright install chromium --with-deps
+
       - name: Check stock and notify via Discord
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          SCRAPER_API_KEY: ${{ secrets.SCRAPER_API_KEY }}
         run: |
           python3 - <<'EOF'
           import json
           import os
-          import ssl
-          import urllib.request
+          from playwright.sync_api import sync_playwright
 
           PRODUCT_URL = "https://shop.amul.com/en/product/amul-high-protein-plain-lassi-200-ml-or-pack-of-30"
           PRODUCT_NAME = "Amul High Protein Plain Lassi (200 mL | Pack of 30)"
           webhook = os.environ["DISCORD_WEBHOOK_URL"]
-          scraper_key = os.environ["SCRAPER_API_KEY"]
 
-          # Use ScraperAPI via direct URL method (avoids SSL proxy issues)
-          api_url = f"https://api.scraperapi.com/?api_key={scraper_key}&url={PRODUCT_URL}"
-
-          ctx = ssl.create_default_context()
-          ctx.check_hostname = False
-          ctx.verify_mode = ssl.CERT_NONE
-
-          req = urllib.request.Request(api_url)
-          response = urllib.request.urlopen(req, context=ctx)
-          html = response.read().decode("utf-8", errors="ignore")
+          with sync_playwright() as p:
+              browser = p.chromium.launch(headless=True)
+              context = browser.new_context(
+                  user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+              )
+              page = context.new_page()
+              page.goto(PRODUCT_URL, wait_until="networkidle", timeout=30000)
+              html = page.content()
+              browser.close()
 
           is_sold_out = "Sold Out" in html or "Notify Me" in html
 
           if not is_sold_out:
+              import urllib.request
               message = {
                   "content": (
                       "🟢 **IN STOCK NOW!**\n"
@@ -47,11 +49,11 @@ jobs:
                   )
               }
               data = json.dumps(message).encode("utf-8")
-              notify_req = urllib.request.Request(
+              req = urllib.request.Request(
                   webhook, data=data,
                   headers={"Content-Type": "application/json"}
               )
-              urllib.request.urlopen(notify_req, context=ctx)
+              urllib.request.urlopen(req)
               print("✅ IN STOCK! Discord notification sent.")
           else:
               print("❌ Still sold out. No notification sent.")
