@@ -38,7 +38,6 @@ jobs:
               page.goto(PRODUCT_URL, wait_until="networkidle", timeout=30000)
 
               try:
-                  # Modal is already open - click directly into the input
                   pincode_input = page.locator("input#search")
                   pincode_input.wait_for(state="visible", timeout=5000)
                   pincode_input.click()
@@ -47,18 +46,20 @@ jobs:
                       page.wait_for_timeout(200)
                   print(f"Typed pincode: {PINCODE}")
                   page.wait_for_timeout(2000)
-                  page.screenshot(path="2_typed.png", full_page=True)
 
-                  # Click dropdown result
+                  # Click dropdown and wait for full page reload
                   page.click("a.searchitem-name", timeout=5000)
                   print("Clicked dropdown")
-                  page.wait_for_timeout(4000)
-                  page.screenshot(path="3_done.png", full_page=True)
+
+                  # Wait for page to fully reload with pincode applied
+                  page.wait_for_load_state("networkidle", timeout=15000)
+                  page.wait_for_timeout(3000)
+                  print("Page reloaded after pincode")
 
               except Exception as e:
                   print(f"Pincode error: {e}")
-                  page.screenshot(path="error.png", full_page=True)
 
+              # Read HTML after page has fully settled
               html = page.content()
               browser.close()
 
@@ -82,10 +83,3 @@ jobs:
               print("❌ Still sold out. No notification sent.")
           PYEOF
           python3 check_stock.py
-
-      - name: Upload screenshots
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: screenshots
-          path: "*.png"
