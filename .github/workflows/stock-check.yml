@@ -36,32 +36,24 @@ jobs:
               page = context.new_page()
 
               page.goto(PRODUCT_URL, wait_until="networkidle", timeout=30000)
-              page.screenshot(path="1_before.png", full_page=True)
 
               try:
-                  # Click the pincode trigger to open the modal
-                  page.click(".pincode_wrap", timeout=5000)
-                  print("Clicked pincode_wrap")
-                  page.wait_for_timeout(1000)
-                  page.screenshot(path="2_modal_open.png", full_page=True)
-
-                  # Now type into the visible input
+                  # Modal is already open - click directly into the input
                   pincode_input = page.locator("input#search")
                   pincode_input.wait_for(state="visible", timeout=5000)
                   pincode_input.click()
-                  pincode_input.clear()
                   for char in PINCODE:
                       page.keyboard.type(char)
                       page.wait_for_timeout(200)
                   print(f"Typed pincode: {PINCODE}")
                   page.wait_for_timeout(2000)
-                  page.screenshot(path="3_typed.png", full_page=True)
+                  page.screenshot(path="2_typed.png", full_page=True)
 
                   # Click dropdown result
                   page.click("a.searchitem-name", timeout=5000)
                   print("Clicked dropdown")
                   page.wait_for_timeout(4000)
-                  page.screenshot(path="4_done.png", full_page=True)
+                  page.screenshot(path="3_done.png", full_page=True)
 
               except Exception as e:
                   print(f"Pincode error: {e}")
